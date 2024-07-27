@@ -21,19 +21,19 @@ def peak_finder(x = [], color = 'red',max_tw = 5):
     i = 50 # skip transient 50us
     while i < len(x):
         cnt = len(results)
-        if abs(x[i] - x[i-1]) > 3e2:
+        if abs(x[i] - x[i-1]) > 1e2:
             print(f"TW detected T{cnt}={i} us slope", int(math.copysign(1, x[i]-x[i-1])))
             plt.plot(i, 0, 'o',color=color, label=f'T{cnt}={i} us')
-            i += 5 # skip 5us
             results.append(i)
+            i += 5 # skip 5us
         else:
             i += 1
         if len(results) >= max_tw:
             break
     return results
 
-m = np.genfromtxt('m.csv', delimiter=',')
-n = np.genfromtxt('n.csv', delimiter=',')
+m = np.genfromtxt('40_60/m.csv', delimiter=',')
+n = np.genfromtxt('40_60/n.csv', delimiter=',')
 
 m_diff = differiator(m)
 n_diff = differiator(n)
@@ -55,6 +55,25 @@ if len(m_tw) > 1 and len(n_tw) > 1:
     c1 = 0.5 * (100 + (m_tw[0] - n_tw[0]) * 0.289942)
     print(f"Distance calculation: {c1} km")
     
+
+# New Calculation
+dm = m_tw[1] - m_tw[0]
+dn = n_tw[1] - n_tw[0]
+l = 100 # km
+d_m = l/((
+    dn/dm
+)+1)
+
+print(f"New Distance Calculation from Bus M is {d_m} km")
+
+d_n =  l/((
+    dm/dn
+)+1) 
+
+print(f"New Distance Calculation from Bus N is {d_n} km")
+
+plt.xlabel('Time (us)')
+
 
 plt.legend()
 plt.show()
