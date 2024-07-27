@@ -21,7 +21,7 @@ def peak_finder(x = [], color = 'red',max_tw = 5):
     i = 50 # skip transient 50us
     while i < len(x):
         cnt = len(results)
-        if abs(x[i] - x[i-1]) > 5e2:
+        if abs(x[i] - x[i-1]) > 3e2:
             print(f"TW detected T{cnt}={i} us slope", int(math.copysign(1, x[i]-x[i-1])))
             plt.plot(i, 0, 'o',color=color, label=f'T{cnt}={i} us')
             i += 5 # skip 5us
@@ -53,7 +53,7 @@ n_tw = peak_finder(n_diff, 'orange',5)
 
 if len(m_tw) > 1 and len(n_tw) > 1:
     c1 = 0.5 * (100 + (m_tw[0] - n_tw[0]) * 0.289942)
-    print(f"Normal Calculation: {c1} km")
+    print(f"Distance calculation: {c1} km")
     
 
 plt.legend()
