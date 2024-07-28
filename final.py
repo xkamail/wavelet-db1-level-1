@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # config
-THRESHOLD = 10
+THRESHOLD = 15   
 PREFIX = '90_10'
 # config
 
@@ -42,15 +42,16 @@ def differiator(x,scale=1):
 
 def peak_finder(x = [], color = 'red',max_tw = 5):
     results = []
-    i = 20_000 # skip transient 20k samples
-    while i <  len(x)-4:
+    i = 10000 # skip transient 0.5k samples
+    width = 6
+    while i <  len(x)-width:
         cnt = len(results)
-        v = abs(x[i] - x[i-4]) # width 4 samples to prevent slower rate
+        v = abs(x[i] - x[i-width]) # width 4 samples to prevent slower rate
         if v > THRESHOLD:
-            print(f"TW detected T{cnt}={i} value=", v)
+            print(f"TW detected T{cnt}={i} value=", v, v//width)
             plt.plot(i, 0, 'o',color=color, label=f'T{cnt}={i} us')
             results.append(i)
-            i += 14 # skip next width
+            i += width+10 # skip next width
         else:
             i += 1
         if len(results) >= max_tw:
