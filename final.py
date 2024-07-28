@@ -2,6 +2,11 @@ import numpy as np
 from matplotlib import pyplot as plt
 import math 
 
+# config
+THRESHOLD = 1e2
+PREFIX = '90_10'
+# config
+
 def get_sign(value):
     if value > 0:
         return 1
@@ -21,7 +26,7 @@ def peak_finder(x = [], color = 'red',max_tw = 5):
     i = 50 # skip transient 50us
     while i < len(x):
         cnt = len(results)
-        if abs(x[i] - x[i-1]) > 1e2:
+        if abs(x[i] - x[i-1]) > THRESHOLD:
             print(f"TW detected T{cnt}={i} us slope", int(math.copysign(1, x[i]-x[i-1])))
             plt.plot(i, 0, 'o',color=color, label=f'T{cnt}={i} us')
             results.append(i)
@@ -32,8 +37,8 @@ def peak_finder(x = [], color = 'red',max_tw = 5):
             break
     return results
 
-m = np.genfromtxt('40_60/m.csv', delimiter=',')
-n = np.genfromtxt('40_60/n.csv', delimiter=',')
+m = np.genfromtxt(PREFIX+'/m.csv', delimiter=',')
+n = np.genfromtxt(PREFIX+'/n.csv', delimiter=',')
 
 m_diff = differiator(m)
 n_diff = differiator(n)
