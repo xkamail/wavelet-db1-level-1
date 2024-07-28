@@ -2,8 +2,12 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # config
-THRESHOLD = 15   
-PREFIX = '90_10'
+PREFIX = '80_20'
+# PREFIX = '70_30'
+# PREFIX = '40_60'
+# PREFIX = '50_50'
+# PREFIX = '90_10'
+# PREFIX = '95_5'
 # config
 
 # scaling coefficients
@@ -12,9 +16,13 @@ h = [
     (3+np.sqrt(3))/(4*np.sqrt(2)),
     (3-np.sqrt(3))/(4*np.sqrt(2)),
     (1-np.sqrt(3))/(4*np.sqrt(2)),
+    (1+np.sqrt(3))/(4*np.sqrt(2)),
+    (3+np.sqrt(3))/(4*np.sqrt(2)),
+    (3-np.sqrt(3))/(4*np.sqrt(2)),
+    (1-np.sqrt(3))/(4*np.sqrt(2)),
 ]
 # wavelet coefficients
-g=[h[3], -h[2], h[1], -h[0]]
+g=[h[3], -h[2], h[1], -h[0], h[7], -h[6], h[5], -h[4]]
 
 def db4_detail_coefficients(x):
     # symmetric
@@ -26,7 +34,7 @@ def db4_detail_coefficients(x):
     x = symmetric
     d = np.zeros(len(x)//2)
     for n in range(len(d)):
-        for k in range(4):
+        for k in range(8):
             if 2*n-k < 0:
                 continue
             if 2*n-k > len(x):
@@ -40,28 +48,53 @@ def differiator(x,scale=1):
         d[n] = scale*(x[n] - x[n-1])
     return d
 
-def peak_finder(x = [], color = 'red',max_tw = 5):
-    results = []
-    i = 10000 # skip transient 0.5k samples
-    width = 6
-    while i <  len(x)-width:
-        cnt = len(results)
-        v = abs(x[i] - x[i-width]) # width 4 samples to prevent slower rate
-        if v > THRESHOLD:
-            print(f"TW detected T{cnt}={i} value=", v, v//width)
-            plt.plot(i, 0, 'o',color=color, label=f'T{cnt}={i} us')
-            results.append(i)
-            i += width+10 # skip next width
-        else:
-            i += 1
-        if len(results) >= max_tw:
+def peak_finder(x = [], color = 'red',dt=0):
+    lookahead = 8
+    mx = -np.inf
+    max_peaks = []
+    foundTW = False
+    i=0
+    std = np.std(x[2000:4000]) /2
+    print(std)
+    lastest_comp = 0
+    while i < len(x)-lookahead:
+        i += 1
+        y = x[i]
+        # detect first spike of TW 
+        if (x[i]-x[i+lookahead]) > 500:
+            foundTW = True
+            mx = y
+            mxpos = i
+        if not foundTW:
+            continue  
+        # limit size of buffers
+        if len(max_peaks) > 5:
             break
-    return results
+        if y > mx:
+            mx = y
+            mxpos = i
+        # find max
+        if y < mx and mx != np.inf:
+            # index of latest max is diff by 4 then skip
+            comp = np.abs(x[i:i+lookahead]).max()
+            if comp < 0:
+                continue
+            if abs(lastest_comp-comp) < 1:
+                continue
+            if comp < mx:
+                
+                print(f"TW detected T{len(max_peaks)}={mxpos} value=", mx, comp,flush=True)
+                max_peaks.append(mxpos)
+                mx = -np.inf
+                i += lookahead//2
+                if i+lookahead >= len(x):
+                    break
+            lastest_comp = comp
+    # max_peaks.pop(0)
+    return max_peaks
 
 m = np.genfromtxt(PREFIX+'/m.csv', delimiter=',')
 n = np.genfromtxt(PREFIX+'/n.csv', delimiter=',')
-
-T = 2e-6
 
 # m_diff = differiator(m)
 # n_diff = differiator(n)
@@ -74,24 +107,29 @@ plt.plot(n_diff, label='bus-n-process')
 plt.grid()
 
 print("M Bus")
-m_tw = peak_finder(m_diff, 'blue',5)
+m_tw = peak_finder(m_diff)
+
 print("=====================================")
 print("N Bus")
-n_tw = peak_finder(n_diff, 'orange',5)
+n_tw = peak_finder(n_diff)
 print("=====================================")
-
 if len(m_tw) == 0 or len(n_tw) == 0:
     print("No TW detected")
     plt.show()
     exit()
+print("M TW: ", m_tw)
+print("N TW: ", n_tw)
+for i in m_tw:
+    plt.plot(i, 0, 'o',color='blue', label=f'M TW={i} us')
+for i in n_tw:
+    plt.plot(i, 0, 'o',color='red', label=f'N TW={i} us')
+
 # Normal calculator
 # 1/2 (100km + (t1-t2) * 0.3km/us)
-
 if len(m_tw) > 1 and len(n_tw) > 1:
     c1 = 0.5 * (100 + (m_tw[0] - n_tw[0]) * 0.289942)
     print(f"Distance calculation: {c1} km")
     
-
 # New Calculation
 dm = m_tw[1] - m_tw[0]
 dn = n_tw[1] - n_tw[0]
@@ -101,11 +139,9 @@ d_m = l/((
 )+1)
 
 print(f"New Distance Calculation from Bus M is {d_m} km")
-
 d_n =  l/((
     dm/dn
 )+1) 
-
 print(f"New Distance Calculation from Bus N is {d_n} km")
 
 plt.xlabel('Time (us)')
