@@ -1,19 +1,38 @@
 import numpy as np
 from matplotlib import pyplot as plt
-import math 
 
 # config
-THRESHOLD = 1e2
+THRESHOLD = 10
 PREFIX = '90_10'
 # config
 
-def get_sign(value):
-    if value > 0:
-        return 1
-    elif value < 0:
-        return -1
-    else:
-        return 0
+# scaling coefficients
+h = [
+    (1+np.sqrt(3))/(4*np.sqrt(2)),
+    (3+np.sqrt(3))/(4*np.sqrt(2)),
+    (3-np.sqrt(3))/(4*np.sqrt(2)),
+    (1-np.sqrt(3))/(4*np.sqrt(2)),
+]
+# wavelet coefficients
+g=[h[3], -h[2], h[1], -h[0]]
+
+def db4_detail_coefficients(x):
+    # symmetric
+    # ... x2 x1 | x1 x2 ... xn | xn xn-1 ...
+    symmetric = np.zeros(len(x)*2)
+    for n in range(len(x)):
+        symmetric[2*n] = x[n]
+        symmetric[2*n+1] = x[n]
+    x = symmetric
+    d = np.zeros(len(x)//2)
+    for n in range(len(d)):
+        for k in range(4):
+            if 2*n-k < 0:
+                continue
+            if 2*n-k > len(x):
+                continue
+            d[n] += g[k] * x[2*n-k]
+    return d
 
 def differiator(x,scale=1):
     d = np.zeros(len(x))
@@ -23,14 +42,15 @@ def differiator(x,scale=1):
 
 def peak_finder(x = [], color = 'red',max_tw = 5):
     results = []
-    i = 50 # skip transient 50us
-    while i < len(x):
+    i = 20_000 # skip transient 20k samples
+    while i <  len(x)-4:
         cnt = len(results)
-        if abs(x[i] - x[i-1]) > THRESHOLD:
-            print(f"TW detected T{cnt}={i} us slope", int(math.copysign(1, x[i]-x[i-1])))
+        v = abs(x[i] - x[i-4]) # width 4 samples to prevent slower rate
+        if v > THRESHOLD:
+            print(f"TW detected T{cnt}={i} value=", v)
             plt.plot(i, 0, 'o',color=color, label=f'T{cnt}={i} us')
             results.append(i)
-            i += 5 # skip 5us
+            i += 14 # skip next width
         else:
             i += 1
         if len(results) >= max_tw:
@@ -40,11 +60,16 @@ def peak_finder(x = [], color = 'red',max_tw = 5):
 m = np.genfromtxt(PREFIX+'/m.csv', delimiter=',')
 n = np.genfromtxt(PREFIX+'/n.csv', delimiter=',')
 
-m_diff = differiator(m)
-n_diff = differiator(n)
+T = 2e-6
 
-plt.plot(m_diff, label='bus-m-diff')
-plt.plot(n_diff, label='bus-n-diff')
+# m_diff = differiator(m)
+# n_diff = differiator(n)
+m_diff = db4_detail_coefficients(m)
+n_diff = db4_detail_coefficients(n)
+
+
+plt.plot(m_diff, label='bus-m-process')
+plt.plot(n_diff, label='bus-n-process')
 plt.grid()
 
 print("M Bus")
@@ -52,7 +77,12 @@ m_tw = peak_finder(m_diff, 'blue',5)
 print("=====================================")
 print("N Bus")
 n_tw = peak_finder(n_diff, 'orange',5)
+print("=====================================")
 
+if len(m_tw) == 0 or len(n_tw) == 0:
+    print("No TW detected")
+    plt.show()
+    exit()
 # Normal calculator
 # 1/2 (100km + (t1-t2) * 0.3km/us)
 
@@ -79,6 +109,6 @@ print(f"New Distance Calculation from Bus N is {d_n} km")
 
 plt.xlabel('Time (us)')
 
-
 plt.legend()
-plt.show()
+plt.show(
+)

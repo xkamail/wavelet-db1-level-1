@@ -34,6 +34,15 @@ def high_pass_filter(x):
         y[n] = alpha * (y[n-1] + x[n] - x[n-1])
     return y
 
+def low_pass_filter(x):
+    # y[n]=α⋅(y[n−1]+x[n])
+    y = np.zeros(len(x))
+    alpha = 0.105
+    print("apply low_pass_filter with alpha: ", alpha)
+    for n in range(len(x)):
+        y[n] = alpha * (y[n-1] + x[n])
+    return y
+
 m = np.genfromtxt('m.csv', delimiter=',')
 # scaling coefficients
 h = [
